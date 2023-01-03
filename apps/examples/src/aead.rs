@@ -1,6 +1,5 @@
-
+use aes_gcm_siv::{aead::Aead, Aes256GcmSiv};
 use crypto::aead::KeyInit;
-use aes_gcm_siv::{Aes256GcmSiv, aead::Aead};
 use generic_array::GenericArray;
 use rand::{rngs::OsRng, RngCore};
 
@@ -22,5 +21,4 @@ fn try_aead() {
     let decrypted = aes_gcm_siv.decrypt(&nonce, encrypted.as_ref()).unwrap();
 
     assert_eq!(decrypted, message.as_bytes());
-
 }
