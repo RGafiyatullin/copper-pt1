@@ -6,8 +6,8 @@ pub(super) enum State<const N: usize, V> {
     Round2Receiving([Option<V>; N]),
     Round2Sending([Option<V>; N]),
     Round3Receiving([Option<V>; N]),
-    Round4Sending(V, [Option<bool>; N]),
-    Round4Receiving(V, [Option<bool>; N]),
+    Round4Sending([Option<V>; N]),
+    Round4Receiving([Option<V>; N]),
 }
 
 impl<const N: usize, V> State<N, V>

@@ -14,5 +14,5 @@ pub struct Inbound<V> {
 pub enum Payload<V> {
     Share(V),
     Candidate(V),
-    Status(bool),
+    Sum(V),
 }

@@ -75,31 +75,30 @@ where
                     None
                 }
             }
-            State::Round3Receiving(candidates) => {
-                if candidates.iter().copied().any(|c| c.is_none()) {
+            State::Round3Receiving(candidates_received) => {
+                if candidates_received.iter().copied().any(|c| c.is_none()) {
                     return Some(None);
                 }
-                let Some(first) = candidates.first().copied().flatten() else { return Some(None) };
-                let is_success = if candidates.iter().all(|&c| c == Some(first)) {
-                    true
-                } else {
-                    false
-                };
-                self.state = State::Round4Sending(first, [Some(is_success); N]);
+
+                let mut sum = V::zero();
+                candidates_received
+                    .into_iter()
+                    .flatten()
+                    .for_each(|v| sum.wrapping_add_assign(v));
+
+                self.state = State::Round4Sending([Some(sum); N]);
                 None
             }
-            State::Round4Sending(candidate, statuses_to_send) => {
-                if let Some(outbound) =
-                    statuses_to_send.iter_mut().enumerate().find_map(|(to, s)| {
-                        s.take().map(|v| Outbound {
-                            to,
-                            payload: Payload::Status(v),
-                        })
+            State::Round4Sending(sums_to_send) => {
+                if let Some(outbound) = sums_to_send.iter_mut().enumerate().find_map(|(to, s)| {
+                    s.take().map(|v| Outbound {
+                        to,
+                        payload: Payload::Sum(v),
                     })
-                {
+                }) {
                     Some(Some(outbound))
                 } else {
-                    self.state = State::Round4Receiving(*candidate, [None; N]);
+                    self.state = State::Round4Receiving([None; N]);
                     None
                 }
             }
@@ -134,13 +133,13 @@ where
             }
 
             (
-                State::Round4Receiving(_candidate, statuses_received),
+                State::Round4Receiving(sums_received),
                 Inbound {
                     from,
-                    payload: Payload::Status(status),
+                    payload: Payload::Sum(status),
                 },
             ) => {
-                if let Some(_existing_status) = statuses_received[from].replace(status) {
+                if let Some(_existing_status) = sums_received[from].replace(status) {
                     return Err(Error::UnexpectedPacket);
                 }
             }
@@ -151,16 +150,24 @@ where
     }
 
     pub fn outcome(&self) -> Result<Option<V>, Error> {
-        let State::Round4Receiving(candidate, statuses) = &self.state else { return Ok(None) };
+        let State::Round4Receiving(sums) = &self.state else { return Ok(None) };
 
-        for s in statuses {
-            match *s {
-                None => return Ok(None),
-                Some(false) => return Err(Error::PeerReportedFailure),
-                Some(true) => (),
+        let mut first = Option::<V>::None;
+
+        for s in sums {
+            match (first, *s) {
+                (_, None) => return Ok(None),
+                (None, Some(this)) => {
+                    first = Some(this);
+                }
+                (Some(prev), Some(this)) => {
+                    if prev != this {
+                        return Err(Error::PeerReportedFailure);
+                    }
+                }
             }
         }
 
-        Ok(Some(*candidate))
+        Ok(first)
     }
 }

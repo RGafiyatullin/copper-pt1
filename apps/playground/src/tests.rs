@@ -9,9 +9,10 @@ use tokio::sync::mpsc;
 
 #[tokio::test]
 async fn test_all() {
-    // run_test::<1, u8>().await;
+    run_test::<1, u8>().await;
     run_test::<2, u8>().await;
-    // run_test::<10, i128>().await;
+    run_test::<10, i128>().await;
+    run_test::<10, u128>().await;
 }
 
 #[tokio::test]
